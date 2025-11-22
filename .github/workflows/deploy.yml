@@ -3,7 +3,6 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,62 +12,25 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      
-    - name: Debug - Show Repository Structure
-      run: |
-        echo "=== 仓库结构 ==="
-        ls -la
-        echo "=== 关键文件 ==="
-        [ -f "_config.yml" ] && echo "✓ _config.yml 存在" || echo "✗ _config.yml 不存在"
-        [ -f "Gemfile" ] && echo "✓ Gemfile 存在" || echo "✗ Gemfile 不存在"
-        echo "=== _config.yml baseurl 设置 ==="
-        grep "baseurl:" _config.yml || echo "baseurl 未设置"
+      - name: Checkout
+        uses: actions/checkout@v4
         
-    - name: Setup Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.3'
-        bundler-cache: true
-        
-    - name: Setup Pages
-      id: pages
-      uses: actions/configure-pages@v3
-      
-    - name: Build with Jekyll
-      run: |
-        # 清理可能的缓存
-        rm -rf .jekyll-cache _site
-        
-        echo "=== 构建前配置检查 ==="
-        echo "baseurl: $(grep 'baseurl:' _config.yml)"
-        echo "url: $(grep 'url:' _config.yml | head -1)"
-        
-        # 构建站点
-        bundle exec jekyll build --trace
-        
-    - name: Debug - Analyze Build Output
-      run: |
-        echo "=== 构建结果分析 ==="
-        echo "_site 目录内容:"
-        ls -la _site/
-        echo ""
-        echo "HTML 文件数量: $(find _site -name "*.html" | wc -l)"
-        echo ""
-        echo "index.html 前几行:"
-        head -20 _site/index.html
-        echo ""
-        echo "检查资源路径:"
-        grep -o 'href="[^"]*"' _site/index.html | head -5
-        grep -o 'src="[^"]*"' _site/index.html | head -5
-        
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v2
-      with:
-        path: _site
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          
+      - name: Build with Jekyll
+        run: |
+          rm -rf _site
+          bundle exec jekyll build
+          
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
 
   deploy:
     environment:
@@ -79,4 +41,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
