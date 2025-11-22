@@ -131,6 +131,11 @@ jobs:
           
       - name: Install and Build 🔧
         run: |
+          # 清理所有缓存和构建文件
+          rm -rf .jekyll-cache _site vendor/bundle
+          # 重新安装 gems
+          bundle install
+          
           echo "=== 开始 Jekyll 构建 ==="
           export JEKYLL_ENV=production
           
