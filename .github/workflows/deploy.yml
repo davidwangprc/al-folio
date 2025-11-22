@@ -71,16 +71,41 @@ jobs:
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
+        
+      - name: Debug - Check Repository Structure
+        run: |
+          echo "=== 仓库结构检查 ==="
+          ls -la
+          echo "=== 关键目录检查 ==="
+          [ -d "_pages" ] && echo "_pages 目录存在" || echo "_pages 目录不存在"
+          [ -d "_layouts" ] && echo "_layouts 目录存在" || echo "_layouts 目录不存在"
+          [ -d "_includes" ] && echo "_includes 目录存在" || echo "_includes 目录不存在"
+          [ -d "assets" ] && echo "assets 目录存在" || echo "assets 目录不存在"
+          echo "=== 配置文件检查 ==="
+          [ -f "_config.yml" ] && echo "_config.yml 存在" || echo "_config.yml 不存在"
+          [ -f "Gemfile" ] && echo "Gemfile 存在" || echo "Gemfile 不存在"
+          
       - name: Setup Ruby 💎
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3.5"
           bundler-cache: true
+          
+      - name: Debug - Check Ruby and Bundle
+        run: |
+          echo "=== Ruby 环境检查 ==="
+          ruby -v
+          bundle -v
+          bundle exec jekyll -v
+          echo "=== Gem 列表 ==="
+          bundle list
+          
       - name: Setup Python 🐍
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
           cache: "pip" # caching pip dependencies
+          
       - name: Update _config.yml ⚙️
         uses: fjogeleit/yaml-update-action@main
         with:
@@ -88,18 +113,80 @@ jobs:
           valueFile: "_config.yml"
           propertyPath: "giscus.repo"
           value: ${{ github.repository }}
+          
+      - name: Install System Dependencies
+        run: |
+          echo "=== 安装系统依赖 ==="
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          pip3 install --upgrade nbconvert
+          
+      - name: Debug - Pre-build Check
+        run: |
+          echo "=== 构建前检查 ==="
+          echo "当前目录: $(pwd)"
+          echo "目录内容:"
+          ls -la
+          echo "JEKYLL_ENV: $JEKYLL_ENV"
+          
       - name: Install and Build 🔧
         run: |
-          sudo apt-get update && sudo apt-get install -y imagemagick
-          pip3 install --upgrade nbconvert
+          echo "=== 开始 Jekyll 构建 ==="
           export JEKYLL_ENV=production
-          bundle exec jekyll build
+          
+          # 检查 Jekyll 配置
+          echo "=== 检查 Jekyll 配置 ==="
+          bundle exec jekyll doctor || echo "Jekyll doctor 完成"
+          
+          # 显示构建详情
+          echo "=== 详细构建过程 ==="
+          bundle exec jekyll build --trace --verbose
+          
+      - name: Debug - Post-build Analysis
+        run: |
+          echo "=== 构建后分析 ==="
+          echo "当前目录: $(pwd)"
+          echo "=== _site 目录检查 ==="
+          if [ -d "_site" ]; then
+            echo "_site 目录存在"
+            echo "_site 目录大小:"
+            du -sh _site/
+            echo "=== _site 目录内容 ==="
+            ls -la _site/
+            echo "=== _site 目录结构 ==="
+            find _site/ -type f -name "*.html" | head -20
+            echo "HTML 文件总数: $(find _site/ -name "*.html" | wc -l)"
+            echo "CSS 文件总数: $(find _site/ -name "*.css" | wc -l)"
+            echo "JS 文件总数: $(find _site/ -name "*.js" | wc -l)"
+            
+            # 检查关键文件
+            echo "=== 关键文件检查 ==="
+            [ -f "_site/index.html" ] && echo "index.html 存在" || echo "index.html 不存在"
+            [ -f "_site/assets/css/main.css" ] && echo "main.css 存在" || echo "main.css 不存在"
+            
+          else
+            echo "错误: _site 目录不存在"
+            exit 1
+          fi
+          
       - name: Purge unused CSS 🧹
         run: |
+          echo "=== 开始 CSS 清理 ==="
           npm install -g purgecss
           purgecss -c purgecss.config.js
+          echo "CSS 清理完成"
+          
+      - name: Debug - Final Check before Deploy
+        run: |
+          echo "=== 部署前最终检查 ==="
+          echo "_site 目录最终状态:"
+          ls -la _site/
+          echo "准备部署的文件:"
+          find _site/ -name "*.html" | head -10
+          
       - name: Deploy 🚀
         if: github.event_name != 'pull_request'
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: _site
+          branch: gh-pages
